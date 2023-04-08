@@ -13,19 +13,19 @@ type OnDisconnect func(c *Conn)
 
 type OnReceive func(c *Conn, data []byte)
 
-type Socket struct {
+type TcpServer struct {
 	onConnect    OnConnect
 	onDisconnect OnDisconnect
 	onReceive    OnReceive
 }
 
-func (s *Socket) Init(onConnect OnConnect, onDisconnect OnDisconnect, onReceive OnReceive) {
+func (s *TcpServer) Init(onConnect OnConnect, onDisconnect OnDisconnect, onReceive OnReceive) {
 	s.onConnect = onConnect
 	s.onDisconnect = onDisconnect
 	s.onReceive = onReceive
 }
 
-func (s *Socket) Listen(port int) error {
+func (s *TcpServer) Listen(port int) error {
 	log.Info("listen tcp port %d", port)
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
@@ -42,13 +42,13 @@ func (s *Socket) Listen(port int) error {
 			conn := &Conn{c: c}
 			s.onConnect(conn)
 
-			s.handleConn(conn)
+			go s.handleConn(conn)
 		}
 	}()
 	return nil
 }
 
-func (s *Socket) handleConn(conn *Conn) {
+func (s *TcpServer) handleConn(conn *Conn) {
 	buf := make([]byte, 1024)
 	for {
 		n, err := conn.Read(buf)
@@ -58,4 +58,5 @@ func (s *Socket) handleConn(conn *Conn) {
 		}
 		s.onReceive(conn, buf[:n])
 	}
+	s.onDisconnect(conn)
 }

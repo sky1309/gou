@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestSocket(t *testing.T) {
-	s := Socket{}
+	s := TcpServer{}
 	s.Init(func(c *Conn) {
 		log.Info("new connection")
 	}, func(c *Conn) {
@@ -31,13 +32,21 @@ func TestSocket(t *testing.T) {
 }
 
 func TestClient(t *testing.T) {
-	c, err := net.Dial("tcp", ":8000")
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
+	wg := sync.WaitGroup{}
 	for i := 0; i < 5; i++ {
-		c.Write([]byte(fmt.Sprintf("abcde%d", i)))
-		time.Sleep(time.Second)
+		wg.Add(1)
+		go func() {
+			c, err := net.Dial("tcp", ":8000")
+			if err != nil {
+				log.Error(err.Error())
+				return
+			}
+			for i := 0; i < 5; i++ {
+				c.Write([]byte(fmt.Sprintf("abcde%d", i)))
+				time.Sleep(time.Second)
+			}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 }
